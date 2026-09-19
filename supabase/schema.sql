@@ -20,6 +20,7 @@ create table if not exists public.items (
   image_url text,
   source_url text,                              -- link back to where it was found (Google image search etc)
   price numeric,
+  size text,
   times_worn integer not null default 0,
   last_worn_date date,
   is_favorite boolean not null default false,
@@ -47,6 +48,9 @@ create table if not exists public.user_settings (
   chrome_color text default '#cdbdf0',
   accent_color text default '#ff6fa5',
   accent2_color text default '#c8f169',
+  custom_categories jsonb not null default '[]',  -- user-added categories, e.g. bags/hats
+  custom_locations jsonb not null default '[]',    -- user-added locations
+  custom_formality jsonb not null default '[]',    -- user-added formality levels
   updated_at timestamptz not null default now()
 );
 
@@ -106,8 +110,7 @@ begin
 
   update public.items
   set times_worn = times_worn + 1,
-      last_worn_date = greatest(coalesce(last_worn_date, p_date), p_date),
-      location = 'hamper'
+      last_worn_date = greatest(coalesce(last_worn_date, p_date), p_date)
   where id = p_item_id and user_id = auth.uid();
 end;
 $$;
