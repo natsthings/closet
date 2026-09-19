@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+/* ---------- Design tokens (user-customizable at runtime via CSS vars) ---------- */
+:root {
+  --chrome: #cdbdf0;       /* titlebar / window chrome color — customizable */
+  --accent: #ff6fa5;       /* primary action color — customizable */
+  --accent-2: #c8f169;     /* secondary highlight — customizable */
+  --paper: #faf6ee;        /* window body / page background */
+  --ink: #17162b;          /* primary text / outlines */
+  --ink-soft: #5c5872;     /* secondary text */
+  --card: #ffffff;
+  --danger: #ff6161;
+  --radius: 10px;
+  --shadow-pop: 4px 4px 0 var(--ink);
+  --shadow-pop-sm: 2px 2px 0 var(--ink);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, .display {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.chrome-font {
+  font-family: 'VT323', monospace;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Browser window chrome ---------- */
+.win {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+
+.win-titlebar {
+  background: var(--chrome);
+  border-bottom: 2px solid var(--ink);
+  border-radius: 8px 8px 0 0;
+  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.win-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+}
+
+.win-addressbar {
+  flex: 1;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow-pop-sm);
+  transition: transform 0.08s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:active { transform: translate(2px, 2px); box-shadow: none; }
+.btn-accent { background: var(--accent); color: white; }
+.btn-accent-2 { background: var(--accent-2); color: var(--ink); }
+.btn-ghost { background: transparent; box-shadow: none; border-color: var(--ink-soft); }
+
+/* ---------- Tags / pills ---------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--paper);
+}
+.pill-active {
+  background: var(--accent-2);
+}
+
+/* ---------- Item card ---------- */
+.item-card {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop-sm);
+  overflow: hidden;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.item-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+/* scrollbar y2k-ish */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--paper); }
+::-webkit-scrollbar-thumb { background: var(--chrome); border: 2px solid var(--ink); border-radius: 999px; }
+
+input, select, textarea {
+  font-family: 'Inter', sans-serif;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: var(--ink);
+}
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.bg-dots {
+  background-image: radial-gradient(var(--ink-soft) 1px, transparent 1px);
+  background-size: 18px 18px;
+  background-position: -9px -9px;
+  opacity: 0.08;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
