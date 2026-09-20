@@ -27,6 +27,7 @@ create table if not exists public.items (
   is_borrowed boolean not null default false,
   borrowed_by text,
   seasonal_storage boolean not null default false, -- true = "put away" for the season
+  sort_order double precision default extract(epoch from now()), -- drag-to-reorder position
   notes text,
   created_at timestamptz not null default now()
 );
