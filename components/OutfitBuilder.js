@@ -15,6 +15,7 @@ const DEFAULT_DIMS = {
   shoes: { w: 120, h: 80 },
   bag: { w: 100, h: 100 },
   jewelry: { w: 70, h: 70 },
+  other: { w: 90, h: 90 },
 };
 
 function defaultLayout(selections) {
@@ -24,6 +25,13 @@ function defaultLayout(selections) {
     const d = DEFAULT_DIMS.jewelry;
     pos[id] = { x: jx, y: 16, w: d.w, h: d.h };
     jx += d.w + 12;
+  });
+  let ox = 16;
+  const otherY = 16 + DEFAULT_DIMS.jewelry.h + 12;
+  selections.other.forEach((id) => {
+    const d = DEFAULT_DIMS.other;
+    pos[id] = { x: ox, y: otherY, w: d.w, h: d.h };
+    ox += d.w + 12;
   });
   if (selections.top) {
     const d = DEFAULT_DIMS.top;
@@ -89,10 +97,12 @@ export default function OutfitBuilder({ items, onClose }) {
     for (const slot of OUTFIT_SLOTS) {
       pools[slot.key] = ownedItems.filter((i) => slot.categories.includes(i.category));
     }
+    const covered = new Set(OUTFIT_SLOTS.flatMap((s) => s.categories));
+    pools.other = ownedItems.filter((i) => !covered.has(i.category));
     return pools;
   }, [ownedItems]);
 
-  const [selections, setSelections] = useState({ top: "", bottom: "", shoes: "", bag: "", jewelry: [] });
+  const [selections, setSelections] = useState({ top: "", bottom: "", shoes: "", bag: "", jewelry: [], other: [] });
   const [positions, setPositions] = useState({});
   const [zIndex, setZIndex] = useState({});
   const zCounter = useRef(1);
@@ -138,9 +148,10 @@ export default function OutfitBuilder({ items, onClose }) {
     });
   }
 
-  function toggleJewelry(itemId) {
+  function toggleMulti(bucket, itemId) {
     setSelections((s) => {
-      const has = s.jewelry.includes(itemId);
+      const list = s[bucket];
+      const has = list.includes(itemId);
       if (has) {
         setPositions((p) => {
           const copy = { ...p };
@@ -150,7 +161,7 @@ export default function OutfitBuilder({ items, onClose }) {
       } else {
         bringToFront(itemId);
       }
-      return { ...s, jewelry: has ? s.jewelry.filter((id) => id !== itemId) : [...s.jewelry, itemId] };
+      return { ...s, [bucket]: has ? list.filter((id) => id !== itemId) : [...list, itemId] };
     });
   }
 
@@ -233,6 +244,10 @@ export default function OutfitBuilder({ items, onClose }) {
     const j = findItem(id);
     if (j) boardItems.push({ key: id, item: j });
   });
+  selections.other.forEach((id) => {
+    const o = findItem(id);
+    if (o) boardItems.push({ key: id, item: o });
+  });
 
   const hasAnything = boardItems.length > 0;
 
@@ -268,13 +283,20 @@ export default function OutfitBuilder({ items, onClose }) {
 
             <div>
               <p className="text-sm font-medium mb-1">Jewelry <span className="text-[var(--ink-soft)] font-normal">(any amount)</span></p>
-              <PickerGrid pool={poolBySlot.jewelry} selectedIds={selections.jewelry} onToggle={toggleJewelry} />
+              <PickerGrid pool={poolBySlot.jewelry} selectedIds={selections.jewelry} onToggle={(id) => toggleMulti("jewelry", id)} />
+            </div>
+
+            <div>
+              <p className="text-sm font-medium mb-1">
+                Other pieces <span className="text-[var(--ink-soft)] font-normal">(accessories, custom categories, anything else — any amount)</span>
+              </p>
+              <PickerGrid pool={poolBySlot.other} selectedIds={selections.other} onToggle={(id) => toggleMulti("other", id)} />
             </div>
 
             <button
               className="btn btn-ghost text-xs mt-1"
               onClick={() => {
-                setSelections({ top: "", bottom: "", shoes: "", bag: "", jewelry: [] });
+                setSelections({ top: "", bottom: "", shoes: "", bag: "", jewelry: [], other: [] });
                 setPositions({});
                 setZIndex({});
               }}
