@@ -9,12 +9,7 @@ import ItemModal from "@/components/ItemModal";
 import ThemeSettings from "@/components/ThemeSettings";
 import CustomOptionsManager from "@/components/CustomOptionsManager";
 import OutfitBuilder from "@/components/OutfitBuilder";
-import { CATEGORIES, LOCATIONS, FORMALITY, FORGOTTEN_DAYS, mergeOptions } from "@/lib/constants";
-
-function daysSince(dateStr) {
-  if (!dateStr) return null;
-  return Math.floor((new Date() - new Date(dateStr)) / (1000 * 60 * 60 * 24));
-}
+import { CATEGORIES, LOCATIONS, FORMALITY, mergeOptions } from "@/lib/constants";
 
 function ClosetApp({ session }) {
   const supabase = createClient();
@@ -37,7 +32,6 @@ function ClosetApp({ session }) {
     formality: "",
     search: "",
     favoritesOnly: false,
-    forgottenOnly: false,
   });
 
   async function loadItems() {
@@ -87,10 +81,6 @@ function ClosetApp({ session }) {
       if (filters.formality && item.formality !== filters.formality) return false;
       if (filters.tags.length && !filters.tags.every((t) => item.tags?.includes(t))) return false;
       if (filters.favoritesOnly && !item.is_favorite) return false;
-      if (filters.forgottenOnly) {
-        const since = daysSince(item.last_worn_date);
-        if (!(item.times_worn > 0 && since !== null && since >= FORGOTTEN_DAYS)) return false;
-      }
       if (filters.search) {
         const q = filters.search.toLowerCase();
         const hay = [item.name, item.color, item.notes, item.size, ...(item.tags || []), ...(item.style || [])].join(" ").toLowerCase();
@@ -119,10 +109,6 @@ function ClosetApp({ session }) {
   const ownedCount = items.filter((i) => i.status === "own").length;
   const wishlistCount = items.filter((i) => i.status === "want").length;
   const totalSpent = items.filter((i) => i.status === "own" && i.price).reduce((sum, i) => sum + Number(i.price), 0);
-  const forgottenCount = items.filter((i) => {
-    const since = daysSince(i.last_worn_date);
-    return i.status === "own" && i.times_worn > 0 && since !== null && since >= FORGOTTEN_DAYS;
-  }).length;
 
   return (
     <div className="min-h-screen p-4 relative z-10 max-w-[1400px] mx-auto flex flex-col gap-4">
@@ -181,7 +167,6 @@ function ClosetApp({ session }) {
             <span>owned: {ownedCount}</span>
             <span>wishlist: {wishlistCount}</span>
             <span>spent: ${totalSpent.toFixed(2)}</span>
-            {forgottenCount > 0 && <span style={{ color: "var(--danger)" }}>! {forgottenCount} forgotten fit{forgottenCount > 1 ? "s" : ""}</span>}
           </div>
         </div>
       </div>
