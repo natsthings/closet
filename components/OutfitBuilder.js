@@ -1,15 +1,60 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { OUTFIT_SLOTS } from "@/lib/constants";
 
-function ItemThumb({ item, small }) {
+const BOARD_W = 480;
+const BOARD_H = 560;
+const BOX = { top: 130, bottom: 130, shoes: 100, bag: 100, jewelry: 80 };
+
+function defaultLayout(selections) {
+  // Simple non-overlapping starting layout — user can drag from here.
+  const pos = {};
+  let jx = 16;
+  selections.jewelry.forEach((id) => {
+    pos[id] = { x: jx, y: 16 };
+    jx += BOX.jewelry + 12;
+  });
+  if (selections.top) pos[selections.top] = { x: BOARD_W / 2 - BOX.top / 2, y: 110 };
+  if (selections.bag) pos[selections.bag] = { x: 16, y: 260 };
+  if (selections.bottom) pos[selections.bottom] = { x: selections.bag ? BOARD_W - BOX.bottom - 16 : BOARD_W / 2 - BOX.bottom / 2, y: 260 };
+  if (selections.shoes) pos[selections.shoes] = { x: BOARD_W / 2 - BOX.shoes / 2, y: 420 };
+  return pos;
+}
+
+function Thumb({ item }) {
   return item?.image_url ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" />
+    <img src={item.image_url} alt={item.name} className="w-full h-full object-contain pointer-events-none" draggable={false} />
   ) : (
-    <div className={`w-full h-full flex items-center justify-center text-center text-[var(--ink-soft)] chrome-font ${small ? "text-xs p-1" : "text-base p-2"}`}>
-      {item ? item.name : "empty"}
+    <div className="w-full h-full flex items-center justify-center text-center text-[10px] text-[var(--ink-soft)] p-1 pointer-events-none">
+      {item?.name || "no image"}
+    </div>
+  );
+}
+
+function PickerGrid({ pool, selectedIds, onToggle }) {
+  if (pool.length === 0) return <p className="text-[11px] text-[var(--ink-soft)]">nothing here yet</p>;
+  return (
+    <div className="grid grid-cols-4 gap-1.5">
+      {pool.map((i) => {
+        const active = selectedIds.includes(i.id);
+        return (
+          <button
+            key={i.id}
+            onClick={() => onToggle(i.id)}
+            title={i.name}
+            className="aspect-square rounded-md overflow-hidden border-2"
+            style={{
+              borderColor: active ? "var(--accent)" : "var(--ink)",
+              boxShadow: active ? "0 0 0 2px var(--accent)" : "none",
+              background: "var(--paper)",
+            }}
+          >
+            <Thumb item={i} />
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -26,33 +71,112 @@ export default function OutfitBuilder({ items, onClose }) {
   }, [ownedItems]);
 
   const [selections, setSelections] = useState({ top: "", bottom: "", shoes: "", bag: "", jewelry: [] });
+  const [positions, setPositions] = useState({});
 
-  function selectSingle(slotKey, itemId) {
-    setSelections((s) => ({ ...s, [slotKey]: itemId }));
-  }
-
-  function toggleJewelry(itemId) {
-    setSelections((s) => ({
-      ...s,
-      jewelry: s.jewelry.includes(itemId) ? s.jewelry.filter((id) => id !== itemId) : [...s.jewelry, itemId],
-    }));
-  }
+  const boardRef = useRef(null);
+  const dragRef = useRef(null); // { key, offsetX, offsetY, boxW, boxH }
 
   function findItem(id) {
     return ownedItems.find((i) => i.id === id) || null;
   }
 
+  function ensurePosition(key) {
+    setPositions((p) => {
+      if (p[key]) return p;
+      const layout = defaultLayout(selections);
+      return { ...p, [key]: layout[key] || { x: 16, y: 16 } };
+    });
+  }
+
+  function selectSingle(slotKey, itemId) {
+    setSelections((s) => {
+      const prevId = s[slotKey];
+      const next = { ...s, [slotKey]: s[slotKey] === itemId ? "" : itemId };
+      if (prevId && prevId !== next[slotKey]) {
+        setPositions((p) => {
+          const copy = { ...p };
+          delete copy[prevId];
+          return copy;
+        });
+      }
+      return next;
+    });
+  }
+
+  function toggleJewelry(itemId) {
+    setSelections((s) => {
+      const has = s.jewelry.includes(itemId);
+      if (has) {
+        setPositions((p) => {
+          const copy = { ...p };
+          delete copy[itemId];
+          return copy;
+        });
+      }
+      return { ...s, jewelry: has ? s.jewelry.filter((id) => id !== itemId) : [...s.jewelry, itemId] };
+    });
+  }
+
+  // --- dragging ---
+  function startDrag(e, key, boxSize) {
+    ensurePosition(key);
+    const point = "touches" in e ? e.touches[0] : e;
+    const current = positions[key] || defaultLayout(selections)[key] || { x: 16, y: 16 };
+    dragRef.current = {
+      key,
+      boxSize,
+      startX: point.clientX,
+      startY: point.clientY,
+      origX: current.x,
+      origY: current.y,
+    };
+    window.addEventListener("mousemove", onDrag);
+    window.addEventListener("mouseup", endDrag);
+    window.addEventListener("touchmove", onDrag, { passive: false });
+    window.addEventListener("touchend", endDrag);
+  }
+
+  function onDrag(e) {
+    if (!dragRef.current) return;
+    e.preventDefault?.();
+    const point = "touches" in e ? e.touches[0] : e;
+    const { key, boxSize, startX, startY, origX, origY } = dragRef.current;
+    const dx = point.clientX - startX;
+    const dy = point.clientY - startY;
+    const maxX = BOARD_W - boxSize;
+    const maxY = BOARD_H - boxSize;
+    const x = Math.min(Math.max(origX + dx, 0), Math.max(maxX, 0));
+    const y = Math.min(Math.max(origY + dy, 0), Math.max(maxY, 0));
+    setPositions((p) => ({ ...p, [key]: { x, y } }));
+  }
+
+  function endDrag() {
+    dragRef.current = null;
+    window.removeEventListener("mousemove", onDrag);
+    window.removeEventListener("mouseup", endDrag);
+    window.removeEventListener("touchmove", onDrag);
+    window.removeEventListener("touchend", endDrag);
+  }
+
+  const boardItems = [];
   const top = findItem(selections.top);
   const bottom = findItem(selections.bottom);
   const shoes = findItem(selections.shoes);
   const bag = findItem(selections.bag);
-  const jewelryItems = selections.jewelry.map(findItem).filter(Boolean);
+  if (top) boardItems.push({ key: "top", item: top, size: BOX.top });
+  if (bottom) boardItems.push({ key: "bottom", item: bottom, size: BOX.bottom });
+  if (shoes) boardItems.push({ key: "shoes", item: shoes, size: BOX.shoes });
+  if (bag) boardItems.push({ key: "bag", item: bag, size: BOX.bag });
+  selections.jewelry.forEach((id) => {
+    const j = findItem(id);
+    if (j) boardItems.push({ key: id, item: j, size: BOX.jewelry });
+  });
 
-  const hasAnything = top || bottom || shoes || bag || jewelryItems.length > 0;
+  const hasAnything = boardItems.length > 0;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="win w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+      <div className="win w-full max-w-4xl max-h-[92vh] overflow-y-auto">
         <div className="win-titlebar sticky top-0 z-10">
           <span className="win-dot" style={{ background: "#ff6161" }} />
           <span className="win-dot" style={{ background: "#ffd166" }} />
@@ -62,104 +186,68 @@ export default function OutfitBuilder({ items, onClose }) {
         </div>
 
         <div className="p-4 flex flex-col md:flex-row gap-4">
-          {/* Picker panel */}
+          {/* Picker panel — image thumbnails, click to select/deselect */}
           <div className="md:w-64 shrink-0 flex flex-col gap-3">
             <h2 className="display font-bold text-lg">build a fit</h2>
+            <p className="text-[11px] text-[var(--ink-soft)] -mt-2">tap to pick, drag on the board to arrange</p>
 
             {OUTFIT_SLOTS.filter((s) => !s.multi).map((slot) => (
-              <label key={slot.key} className="text-sm font-medium block">
-                {slot.label} {!slot.required && <span className="text-[var(--ink-soft)] font-normal">(optional)</span>}
-                <select
-                  value={selections[slot.key]}
-                  onChange={(e) => selectSingle(slot.key, e.target.value)}
-                  className="w-full mt-1"
-                >
-                  <option value="">— none —</option>
-                  {poolBySlot[slot.key].map((i) => (
-                    <option key={i.id} value={i.id}>{i.name}</option>
-                  ))}
-                </select>
-                {poolBySlot[slot.key].length === 0 && (
-                  <span className="text-[11px] text-[var(--ink-soft)]">no {slot.label.toLowerCase()} in your closet yet</span>
-                )}
-              </label>
+              <div key={slot.key}>
+                <p className="text-sm font-medium mb-1">
+                  {slot.label} {!slot.required && <span className="text-[var(--ink-soft)] font-normal">(optional)</span>}
+                </p>
+                <PickerGrid
+                  pool={poolBySlot[slot.key]}
+                  selectedIds={selections[slot.key] ? [selections[slot.key]] : []}
+                  onToggle={(id) => selectSingle(slot.key, id)}
+                />
+              </div>
             ))}
 
             <div>
               <p className="text-sm font-medium mb-1">Jewelry <span className="text-[var(--ink-soft)] font-normal">(any amount)</span></p>
-              {poolBySlot.jewelry.length === 0 ? (
-                <p className="text-[11px] text-[var(--ink-soft)]">no jewelry in your closet yet</p>
-              ) : (
-                <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1">
-                  {poolBySlot.jewelry.map((i) => (
-                    <label key={i.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input type="checkbox" checked={selections.jewelry.includes(i.id)} onChange={() => toggleJewelry(i.id)} />
-                      {i.name}
-                    </label>
-                  ))}
-                </div>
-              )}
+              <PickerGrid pool={poolBySlot.jewelry} selectedIds={selections.jewelry} onToggle={toggleJewelry} />
             </div>
 
             <button
               className="btn btn-ghost text-xs mt-1"
-              onClick={() => setSelections({ top: "", bottom: "", shoes: "", bag: "", jewelry: [] })}
+              onClick={() => {
+                setSelections({ top: "", bottom: "", shoes: "", bag: "", jewelry: [] });
+                setPositions({});
+              }}
             >
               clear all
             </button>
           </div>
 
-          {/* Layout preview — CSS grid so nothing ever overlaps */}
-          <div className="flex-1 win !shadow-none bg-[var(--paper)] p-3">
-            {!hasAnything ? (
-              <div className="h-80 flex items-center justify-center text-center text-[var(--ink-soft)] chrome-font text-lg">
-                pick some pieces to lay out your fit
-              </div>
-            ) : (
-              <div
-                className="grid gap-3"
-                style={{
-                  gridTemplateAreas: bag
-                    ? `"jewelry jewelry" "top top" "bag bottom" "shoes shoes"`
-                    : `"jewelry jewelry" "top top" "bottom bottom" "shoes shoes"`,
-                  gridTemplateColumns: "1fr 1fr",
-                }}
-              >
-                {jewelryItems.length > 0 && (
-                  <div style={{ gridArea: "jewelry" }} className="flex flex-wrap gap-2 justify-center">
-                    {jewelryItems.map((j) => (
-                      <div key={j.id} className="win w-20 h-20 shrink-0">
-                        <ItemThumb item={j} small />
-                      </div>
-                    ))}
-                  </div>
-                )}
+          {/* Drag-and-drop board */}
+          <div className="flex-1 flex justify-center">
+            <div
+              ref={boardRef}
+              className="relative win !shadow-none bg-[var(--paper)] overflow-hidden shrink-0"
+              style={{ width: BOARD_W, height: BOARD_H, maxWidth: "100%" }}
+            >
+              {!hasAnything && (
+                <div className="absolute inset-0 flex items-center justify-center text-center text-[var(--ink-soft)] chrome-font text-lg px-6">
+                  pick some pieces on the left — they&apos;ll show up here to drag around
+                </div>
+              )}
 
-                {top && (
-                  <div style={{ gridArea: "top" }} className="win h-48 mx-auto w-40">
-                    <ItemThumb item={top} />
+              {boardItems.map(({ key, item, size }) => {
+                const pos = positions[key] || defaultLayout(selections)[key] || { x: 16, y: 16 };
+                return (
+                  <div
+                    key={key}
+                    onMouseDown={(e) => startDrag(e, key, size)}
+                    onTouchStart={(e) => startDrag(e, key, size)}
+                    className="absolute win cursor-grab active:cursor-grabbing select-none"
+                    style={{ left: pos.x, top: pos.y, width: size, height: size, touchAction: "none" }}
+                  >
+                    <Thumb item={item} />
                   </div>
-                )}
-
-                {bag && (
-                  <div style={{ gridArea: "bag" }} className="win h-40">
-                    <ItemThumb item={bag} />
-                  </div>
-                )}
-
-                {bottom && (
-                  <div style={{ gridArea: "bottom" }} className="win h-40 mx-auto w-40">
-                    <ItemThumb item={bottom} />
-                  </div>
-                )}
-
-                {shoes && (
-                  <div style={{ gridArea: "shoes" }} className="win h-28 mx-auto w-40">
-                    <ItemThumb item={shoes} />
-                  </div>
-                )}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
