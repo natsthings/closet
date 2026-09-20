@@ -94,6 +94,13 @@ export default function OutfitBuilder({ items, onClose }) {
 
   const [selections, setSelections] = useState({ top: "", bottom: "", shoes: "", bag: "", jewelry: [] });
   const [positions, setPositions] = useState({});
+  const [zIndex, setZIndex] = useState({});
+  const zCounter = useRef(1);
+
+  function bringToFront(key) {
+    zCounter.current += 1;
+    setZIndex((z) => ({ ...z, [key]: zCounter.current }));
+  }
 
   const boardRef = useRef(null);
   const dragRef = useRef(null); // move drag: { key, startX, startY, origX, origY, w, h }
@@ -126,6 +133,7 @@ export default function OutfitBuilder({ items, onClose }) {
           return copy;
         });
       }
+      if (next[slotKey]) bringToFront(next[slotKey]);
       return next;
     });
   }
@@ -139,6 +147,8 @@ export default function OutfitBuilder({ items, onClose }) {
           delete copy[itemId];
           return copy;
         });
+      } else {
+        bringToFront(itemId);
       }
       return { ...s, jewelry: has ? s.jewelry.filter((id) => id !== itemId) : [...s.jewelry, itemId] };
     });
@@ -147,6 +157,7 @@ export default function OutfitBuilder({ items, onClose }) {
   // --- move ---
   function startDrag(e, key) {
     ensurePosition(key);
+    bringToFront(key);
     const point = "touches" in e ? e.touches[0] : e;
     const current = currentPos(key);
     dragRef.current = { key, startX: point.clientX, startY: point.clientY, origX: current.x, origY: current.y, w: current.w, h: current.h };
@@ -265,6 +276,7 @@ export default function OutfitBuilder({ items, onClose }) {
               onClick={() => {
                 setSelections({ top: "", bottom: "", shoes: "", bag: "", jewelry: [] });
                 setPositions({});
+                setZIndex({});
               }}
             >
               clear all
@@ -292,7 +304,7 @@ export default function OutfitBuilder({ items, onClose }) {
                     onMouseDown={(e) => startDrag(e, key)}
                     onTouchStart={(e) => startDrag(e, key)}
                     className="absolute cursor-grab active:cursor-grabbing select-none group"
-                    style={{ left: pos.x, top: pos.y, width: pos.w, height: pos.h, touchAction: "none" }}
+                    style={{ left: pos.x, top: pos.y, width: pos.w, height: pos.h, touchAction: "none", zIndex: zIndex[key] || 1 }}
                   >
                     <Thumb item={item} />
                     <div
