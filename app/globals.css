@@ -22,6 +22,8 @@ html, body {
   background: var(--paper);
   color: var(--ink);
   font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 h1, h2, h3, .display {
