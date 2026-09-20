@@ -109,6 +109,7 @@ function ClosetApp({ session }) {
   const ownedCount = items.filter((i) => i.status === "own").length;
   const wishlistCount = items.filter((i) => i.status === "want").length;
   const totalSpent = items.filter((i) => i.status === "own" && i.price).reduce((sum, i) => sum + Number(i.price), 0);
+  const totalPending = items.filter((i) => i.status === "want" && i.price).reduce((sum, i) => sum + Number(i.price), 0);
 
   return (
     <div className="min-h-screen p-4 relative z-10 max-w-[1400px] mx-auto flex flex-col gap-4">
@@ -167,6 +168,7 @@ function ClosetApp({ session }) {
             <span>owned: {ownedCount}</span>
             <span>wishlist: {wishlistCount}</span>
             <span>spent: ${totalSpent.toFixed(2)}</span>
+            <span>pending: ${totalPending.toFixed(2)}</span>
           </div>
         </div>
       </div>
