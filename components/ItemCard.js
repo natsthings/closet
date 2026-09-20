@@ -9,15 +9,13 @@ function daysSince(dateStr) {
   return Math.floor((now - then) / (1000 * 60 * 60 * 24));
 }
 
-export default function ItemCard({ item, onWear, onEdit, onToggleFavorite, onDelete }) {
+export default function ItemCard({ item, onEdit, onToggleFavorite, onDelete }) {
   const since = daysSince(item.last_worn_date);
   const isForgotten = item.status === "own" && item.times_worn > 0 && since !== null && since >= FORGOTTEN_DAYS;
   const isRecentlyWorn = item.status === "own" && since !== null && since < REPEAT_WARNING_DAYS;
-  const costPerWear =
-    item.price && item.times_worn > 0 ? (item.price / item.times_worn).toFixed(2) : item.price ? item.price.toFixed(2) : null;
 
   return (
-    <div className="item-card flex flex-col">
+    <div className="item-card flex flex-col w-full min-w-0">
       <div className="relative aspect-[3/4] bg-[var(--paper)] border-b-2 border-[var(--ink)] overflow-hidden">
         {item.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -28,7 +26,7 @@ export default function ItemCard({ item, onWear, onEdit, onToggleFavorite, onDel
           </div>
         )}
 
-        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 items-start">
+        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 items-start max-w-[75%]">
           {isForgotten && <span className="pill" style={{ background: "#ffd166" }}>! forgotten fit</span>}
           {isRecentlyWorn && <span className="pill" style={{ background: "#ffb4c6" }}>worn {since}d ago</span>}
           {item.is_borrowed && <span className="pill" style={{ background: "#b8d4ff" }}>borrowed out</span>}
@@ -36,7 +34,7 @@ export default function ItemCard({ item, onWear, onEdit, onToggleFavorite, onDel
 
         <button
           onClick={() => onToggleFavorite(item)}
-          className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full border-2 border-[var(--ink)] flex items-center justify-center"
+          className="absolute top-1.5 right-1.5 w-7 h-7 shrink-0 rounded-full border-2 border-[var(--ink)] flex items-center justify-center"
           style={{ background: item.is_favorite ? "var(--accent)" : "var(--card)" }}
           title="Favorite"
         >
@@ -44,15 +42,16 @@ export default function ItemCard({ item, onWear, onEdit, onToggleFavorite, onDel
         </button>
       </div>
 
-      <div className="p-2.5 flex flex-col gap-1.5 flex-1">
-        <div className="flex items-start justify-between gap-1">
-          <h3 className="font-semibold text-sm leading-tight">{item.name}</h3>
+      <div className="p-2.5 flex flex-col gap-1.5 flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-1 min-w-0">
+          <h3 className="font-semibold text-sm leading-tight break-words min-w-0">{item.name}</h3>
           <span className="pill text-[10px] shrink-0">{item.location}</span>
         </div>
 
-        {item.tags?.length > 0 && (
+        {(item.size || item.tags?.length > 0) && (
           <div className="flex flex-wrap gap-1">
-            {item.tags.slice(0, 4).map((t) => (
+            {item.size && <span className="pill text-[10px]">size {item.size}</span>}
+            {item.tags?.slice(0, 3).map((t) => (
               <span key={t} className="pill text-[10px]">
                 #{t}
               </span>
@@ -60,21 +59,24 @@ export default function ItemCard({ item, onWear, onEdit, onToggleFavorite, onDel
           </div>
         )}
 
-        <div className="flex items-center justify-between text-[11px] text-[var(--ink-soft)] mt-auto pt-1">
-          <span>worn {item.times_worn}x</span>
-          {costPerWear && <span>${costPerWear}/wear</span>}
-        </div>
+        {item.price != null && (
+          <p className="text-[12px] font-semibold text-[var(--ink-soft)] mt-auto pt-1">${Number(item.price).toFixed(2)}</p>
+        )}
 
-        <div className="flex gap-1.5 mt-1">
-          {item.status === "own" && (
-            <button onClick={() => onWear(item)} className="btn btn-accent-2 text-[11px] py-1 px-2.5 flex-1">
-              mark worn today
-            </button>
-          )}
-          <button onClick={() => onEdit(item)} className="btn btn-ghost text-[11px] py-1 px-2.5">
-            edit
+        <div className="flex items-center gap-1.5 mt-1 w-full justify-end">
+          <button
+            onClick={() => onEdit(item)}
+            className="btn btn-ghost text-[12px] w-7 h-7 shrink-0 !p-0 flex items-center justify-center"
+            title="Edit"
+          >
+            ✎
           </button>
-          <button onClick={() => onDelete(item)} className="btn btn-ghost text-[11px] py-1 px-2.5" style={{ color: "var(--danger)" }}>
+          <button
+            onClick={() => onDelete(item)}
+            className="btn btn-ghost text-[12px] w-7 h-7 shrink-0 !p-0 flex items-center justify-center"
+            style={{ color: "var(--danger)" }}
+            title="Delete"
+          >
             ✕
           </button>
         </div>
