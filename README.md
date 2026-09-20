@@ -4,26 +4,50 @@ A Y2K/web1.0-browser-styled virtual closet app. Track what you **own**, **want**
 and **just see**. Built with Next.js (App Router), Supabase (auth + database +
 image storage), deployed on Vercel.
 
+## ⚠️ Already deployed this before? Run these migrations first
+
+If you set up Supabase before this update, run these files in order before
+pulling the new code — Supabase → **SQL Editor** → **New query** → paste →
+**Run**:
+1. `supabase/migrations/002_size_and_custom_options.sql` — adds the `size`
+   field and custom-options storage
+2. `supabase/migrations/003_remove_auto_hamper.sql` — stops "mark worn"
+   from auto-moving an item to the hamper
+
+(Brand new setup? Skip both — `schema.sql` already includes everything.)
+
 ## What's in this MVP (Phase 1)
 
 - Email/password auth (Supabase Auth)
 - Add clothing items with a photo, category, color, formality, price, tags, and style
-- Tabs for shirt / pants / shorts / skirt / outerwear / shoes / jewelry / accessory / other
+- Tabs for shirt / pants / shorts / skirt / outerwear / shoes / bag / jewelry / accessory / other
 - Status: **own** / **want** (wishlist) / **seen**
 - Location tags: home / dorm / hamper / laundry / seasonal storage
-- Free-form custom tags + search across name/tags/notes/color (the "type a keyword
+- Free-form custom tags + search across name/tags/notes/color/size (the "type a keyword
   and find that one shirt" search you described)
 - Left sidebar filters: status, location, formality, tags, favorites, forgotten fits
-- "Mark worn today" button — logs to a wear_log table, bumps a wear counter,
-  auto-moves the item to the hamper, and stores last-worn date
 - "Forgotten fit" badge — flags owned items worn before but not in 30+ days
 - "Recently worn" badge — flags items worn in the last 14 days (the "don't repeat
   within 2 weeks" check)
-- Cost-per-wear, shown live on every card (price ÷ times worn)
+- Price shown on every card
 - Closet stats bar: items owned, wishlist count, total spent, forgotten count
 - Fully custom theme colors (chrome/accent/secondary accent) with presets,
   saved per-user
 - Vintage browser-window chrome UI throughout (traffic-light dots, address bars)
+- Bags as their own category, plus a **size** field on every item
+- **⚙ manage options** — add your own categories, locations, or formality
+  levels beyond the defaults (e.g. "swimwear," "car," "cocktail"), saved per-user
+- **👗 make an outfit** — pick one top, one bottom, one pair of shoes, an
+  optional bag, and any number of jewelry pieces from what you actually own;
+  they're laid out in a clean, non-overlapping grid (works best with
+  transparent-background PNGs)
+
+The `mark_worn` database function and `wear_log` table are still there,
+unused by the UI for now — they're ready for whichever wear-tracking
+mechanic (calendar, fit journal, etc.) you want to build in Phase 2. Until
+then, the "forgotten fit" / "recently worn" badges only reflect whatever
+`times_worn` / `last_worn_date` a wardrobe already has (nothing updates them
+right now since the card's wear button was removed).
 
 ## Phase 2 roadmap (not built yet, by design)
 
