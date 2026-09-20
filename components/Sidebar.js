@@ -108,17 +108,13 @@ export default function Sidebar({ filters, setFilters, allTags, counts, location
             <input type="checkbox" checked={filters.favoritesOnly} onChange={(e) => setFilters((f) => ({ ...f, favoritesOnly: e.target.checked }))} />
             Favorites only
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={filters.forgottenOnly} onChange={(e) => setFilters((f) => ({ ...f, forgottenOnly: e.target.checked }))} />
-            Forgotten fits (30d+)
-          </label>
         </div>
 
-        {(filters.tags.length > 0 || filters.locations.length > 0 || filters.formality || filters.search || filters.favoritesOnly || filters.forgottenOnly) && (
+        {(filters.tags.length > 0 || filters.locations.length > 0 || filters.formality || filters.search || filters.favoritesOnly) && (
           <button
             className="btn btn-ghost text-xs"
             onClick={() =>
-              setFilters((f) => ({ ...f, tags: [], locations: [], formality: "", search: "", favoritesOnly: false, forgottenOnly: false }))
+              setFilters((f) => ({ ...f, tags: [], locations: [], formality: "", search: "", favoritesOnly: false }))
             }
           >
             clear filters
