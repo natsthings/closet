@@ -7,7 +7,9 @@ import Sidebar from "@/components/Sidebar";
 import ItemCard from "@/components/ItemCard";
 import ItemModal from "@/components/ItemModal";
 import ThemeSettings from "@/components/ThemeSettings";
-import { CATEGORIES, FORGOTTEN_DAYS } from "@/lib/constants";
+import CustomOptionsManager from "@/components/CustomOptionsManager";
+import OutfitBuilder from "@/components/OutfitBuilder";
+import { CATEGORIES, LOCATIONS, FORMALITY, FORGOTTEN_DAYS, mergeOptions } from "@/lib/constants";
 
 function daysSince(dateStr) {
   if (!dateStr) return null;
@@ -23,6 +25,10 @@ function ClosetApp({ session }) {
   const [category, setCategory] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [outfitOpen, setOutfitOpen] = useState(false);
+
+  const [customOptions, setCustomOptions] = useState({ categories: [], locations: [], formality: [] });
 
   const [filters, setFilters] = useState({
     status: "own",
@@ -41,9 +47,25 @@ function ClosetApp({ session }) {
     setLoading(false);
   }
 
+  async function loadSettings() {
+    const { data } = await supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle();
+    if (data) {
+      setCustomOptions({
+        categories: data.custom_categories || [],
+        locations: data.custom_locations || [],
+        formality: data.custom_formality || [],
+      });
+    }
+  }
+
   useEffect(() => {
     loadItems();
+    loadSettings();
   }, []);
+
+  const categories = useMemo(() => mergeOptions(CATEGORIES, customOptions.categories), [customOptions.categories]);
+  const locations = useMemo(() => mergeOptions(LOCATIONS, customOptions.locations), [customOptions.locations]);
+  const formalityOptions = useMemo(() => mergeOptions(FORMALITY, customOptions.formality), [customOptions.formality]);
 
   const allTags = useMemo(() => {
     const s = new Set();
@@ -71,17 +93,12 @@ function ClosetApp({ session }) {
       }
       if (filters.search) {
         const q = filters.search.toLowerCase();
-        const hay = [item.name, item.color, item.notes, ...(item.tags || []), ...(item.style || [])].join(" ").toLowerCase();
+        const hay = [item.name, item.color, item.notes, item.size, ...(item.tags || []), ...(item.style || [])].join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
   }, [items, category, filters]);
-
-  async function markWorn(item) {
-    const { error } = await supabase.rpc("mark_worn", { p_item_id: item.id });
-    if (!error) loadItems();
-  }
 
   async function toggleFavorite(item) {
     await supabase.from("items").update({ is_favorite: !item.is_favorite }).eq("id", item.id);
@@ -111,7 +128,7 @@ function ClosetApp({ session }) {
     <div className="min-h-screen p-4 relative z-10 max-w-[1400px] mx-auto flex flex-col gap-4">
       {/* Top browser window: title + tabs + stats */}
       <div className="win">
-        <div className="win-titlebar">
+        <div className="win-titlebar flex-wrap">
           <span className="win-dot" style={{ background: "#ff6161" }} />
           <span className="win-dot" style={{ background: "#ffd166" }} />
           <span className="win-dot" style={{ background: "#8ee08e" }} />
@@ -130,22 +147,30 @@ function ClosetApp({ session }) {
         <div className="p-3.5 flex flex-col gap-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h1 className="display text-2xl font-bold">closet.exe</h1>
-            <button
-              className="btn btn-accent"
-              onClick={() => {
-                setEditingItem(null);
-                setModalOpen(true);
-              }}
-            >
-              + add item
-            </button>
+            <div className="flex gap-2 flex-wrap">
+              <button className="btn btn-ghost" onClick={() => setOptionsOpen(true)}>
+                ⚙ manage options
+              </button>
+              <button className="btn btn-accent-2" onClick={() => setOutfitOpen(true)}>
+                👗 make an outfit
+              </button>
+              <button
+                className="btn btn-accent"
+                onClick={() => {
+                  setEditingItem(null);
+                  setModalOpen(true);
+                }}
+              >
+                + add item
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
             <button onClick={() => setCategory("all")} className={`pill ${category === "all" ? "pill-active" : ""}`}>
               all
             </button>
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <button key={c.value} onClick={() => setCategory(c.value)} className={`pill ${category === c.value ? "pill-active" : ""}`}>
                 {c.label}
               </button>
@@ -162,9 +187,16 @@ function ClosetApp({ session }) {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <Sidebar filters={filters} setFilters={setFilters} allTags={allTags} counts={counts} />
+        <Sidebar
+          filters={filters}
+          setFilters={setFilters}
+          allTags={allTags}
+          counts={counts}
+          locations={locations}
+          formalityOptions={formalityOptions}
+        />
 
-        <div className="flex-1 w-full">
+        <div className="flex-1 w-full min-w-0">
           {loading ? (
             <p className="chrome-font text-xl p-6 text-center">loading your closet...</p>
           ) : filtered.length === 0 ? (
@@ -178,7 +210,6 @@ function ClosetApp({ session }) {
                 <ItemCard
                   key={item.id}
                   item={item}
-                  onWear={markWorn}
                   onEdit={editItem}
                   onToggleFavorite={toggleFavorite}
                   onDelete={deleteItem}
@@ -193,6 +224,9 @@ function ClosetApp({ session }) {
         <ItemModal
           userId={userId}
           initial={editingItem}
+          categories={categories}
+          locations={locations}
+          formalityOptions={formalityOptions}
           onClose={() => setModalOpen(false)}
           onSaved={() => {
             setModalOpen(false);
@@ -200,6 +234,17 @@ function ClosetApp({ session }) {
           }}
         />
       )}
+
+      {optionsOpen && (
+        <CustomOptionsManager
+          userId={userId}
+          customOptions={customOptions}
+          onChange={setCustomOptions}
+          onClose={() => setOptionsOpen(false)}
+        />
+      )}
+
+      {outfitOpen && <OutfitBuilder items={items} onClose={() => setOutfitOpen(false)} />}
     </div>
   );
 }
