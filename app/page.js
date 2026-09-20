@@ -22,6 +22,7 @@ function ClosetApp({ session }) {
   const [editingItem, setEditingItem] = useState(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [outfitOpen, setOutfitOpen] = useState(false);
+  const [draggedId, setDraggedId] = useState(null);
 
   const [customOptions, setCustomOptions] = useState({ categories: [], locations: [], formality: [] });
 
@@ -36,7 +37,11 @@ function ClosetApp({ session }) {
 
   async function loadItems() {
     setLoading(true);
-    const { data, error } = await supabase.from("items").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("items")
+      .select("*")
+      .order("sort_order", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
     if (!error) setItems(data || []);
     setLoading(false);
   }
@@ -89,6 +94,31 @@ function ClosetApp({ session }) {
       return true;
     });
   }, [items, category, filters]);
+
+  // Drag one item to just before `targetItem` within whatever subset is
+  // currently displayed (All, a category tab, wishlist filter, etc). Works
+  // across every view since they're all just filtered slices of `items`,
+  // ordered by the same sort_order column.
+  async function reorderItem(draggedItemId, targetItem) {
+    if (draggedItemId === targetItem.id) return;
+    const list = filtered.filter((i) => i.id !== draggedItemId);
+    const targetIdx = list.findIndex((i) => i.id === targetItem.id);
+    if (targetIdx === -1) return;
+    const above = list[targetIdx - 1]; // sits before target (higher sort_order)
+    const below = list[targetIdx]; // the target itself
+
+    let newOrder;
+    const belowVal = Number(below.sort_order ?? Date.parse(below.created_at) / 1000);
+    if (above) {
+      const aboveVal = Number(above.sort_order ?? Date.parse(above.created_at) / 1000);
+      newOrder = (aboveVal + belowVal) / 2;
+    } else {
+      newOrder = belowVal + 1;
+    }
+
+    await supabase.from("items").update({ sort_order: newOrder }).eq("id", draggedItemId);
+    loadItems();
+  }
 
   async function toggleFavorite(item) {
     await supabase.from("items").update({ is_favorite: !item.is_favorite }).eq("id", item.id);
@@ -194,13 +224,28 @@ function ClosetApp({ session }) {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3.5">
               {filtered.map((item) => (
-                <ItemCard
+                <div
                   key={item.id}
-                  item={item}
-                  onEdit={editItem}
-                  onToggleFavorite={toggleFavorite}
-                  onDelete={deleteItem}
-                />
+                  draggable
+                  onDragStart={() => setDraggedId(item.id)}
+                  onDragEnd={() => setDraggedId(null)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedId) reorderItem(draggedId, item);
+                    setDraggedId(null);
+                  }}
+                  className="cursor-grab active:cursor-grabbing"
+                  style={{ opacity: draggedId === item.id ? 0.4 : 1 }}
+                  title="Drag to reorder"
+                >
+                  <ItemCard
+                    item={item}
+                    onEdit={editItem}
+                    onToggleFavorite={toggleFavorite}
+                    onDelete={deleteItem}
+                  />
+                </div>
               ))}
             </div>
           )}
