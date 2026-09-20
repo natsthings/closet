@@ -1,19 +1,6 @@
 "use client";
 
-import { FORGOTTEN_DAYS, REPEAT_WARNING_DAYS } from "@/lib/constants";
-
-function daysSince(dateStr) {
-  if (!dateStr) return null;
-  const then = new Date(dateStr);
-  const now = new Date();
-  return Math.floor((now - then) / (1000 * 60 * 60 * 24));
-}
-
 export default function ItemCard({ item, onEdit, onToggleFavorite, onDelete }) {
-  const since = daysSince(item.last_worn_date);
-  const isForgotten = item.status === "own" && item.times_worn > 0 && since !== null && since >= FORGOTTEN_DAYS;
-  const isRecentlyWorn = item.status === "own" && since !== null && since < REPEAT_WARNING_DAYS;
-
   return (
     <div className="item-card flex flex-col w-full min-w-0">
       <div className="relative aspect-[3/4] bg-[var(--paper)] border-b-2 border-[var(--ink)] overflow-hidden">
@@ -26,11 +13,11 @@ export default function ItemCard({ item, onEdit, onToggleFavorite, onDelete }) {
           </div>
         )}
 
-        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 items-start max-w-[75%]">
-          {isForgotten && <span className="pill" style={{ background: "#ffd166" }}>! forgotten fit</span>}
-          {isRecentlyWorn && <span className="pill" style={{ background: "#ffb4c6" }}>worn {since}d ago</span>}
-          {item.is_borrowed && <span className="pill" style={{ background: "#b8d4ff" }}>borrowed out</span>}
-        </div>
+        {item.is_borrowed && (
+          <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 items-start max-w-[75%]">
+            <span className="pill" style={{ background: "#b8d4ff" }}>borrowed out</span>
+          </div>
+        )}
 
         <button
           onClick={() => onToggleFavorite(item)}
