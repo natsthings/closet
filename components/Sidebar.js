@@ -1,8 +1,8 @@
 "use client";
 
-import { LOCATIONS, STATUSES, FORMALITY } from "@/lib/constants";
+import { STATUSES } from "@/lib/constants";
 
-export default function Sidebar({ filters, setFilters, allTags, counts }) {
+export default function Sidebar({ filters, setFilters, allTags, counts, locations, formalityOptions }) {
   function toggleTag(tag) {
     setFilters((f) => ({
       ...f,
@@ -61,7 +61,7 @@ export default function Sidebar({ filters, setFilters, allTags, counts }) {
         <div>
           <p className="font-semibold mb-1.5">Location</p>
           <div className="flex flex-wrap gap-1.5">
-            {LOCATIONS.map((l) => (
+            {locations.map((l) => (
               <button
                 key={l.value}
                 onClick={() => toggleLocation(l.value)}
@@ -76,7 +76,7 @@ export default function Sidebar({ filters, setFilters, allTags, counts }) {
         <div>
           <p className="font-semibold mb-1.5">Formality</p>
           <div className="flex flex-wrap gap-1.5">
-            {FORMALITY.map((f) => (
+            {formalityOptions.map((f) => (
               <button
                 key={f.value}
                 onClick={() =>
