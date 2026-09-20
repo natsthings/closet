@@ -73,8 +73,8 @@ function PickerGrid({ pool, selectedIds, onToggle }) {
           <button
             key={i.id}
             onClick={() => onToggle(i.id)}
-            title={i.name}
-            className="aspect-square rounded-md overflow-hidden border-2"
+            title={i.status === "want" ? `${i.name} (wishlist)` : i.name}
+            className="relative aspect-square rounded-md overflow-hidden border-2"
             style={{
               borderColor: active ? "var(--accent)" : "var(--ink)",
               boxShadow: active ? "0 0 0 2px var(--accent)" : "none",
@@ -82,6 +82,14 @@ function PickerGrid({ pool, selectedIds, onToggle }) {
             }}
           >
             <Thumb item={i} />
+            {i.status === "want" && (
+              <span
+                className="absolute bottom-0 left-0 right-0 text-[8px] font-semibold text-center py-[1px]"
+                style={{ background: "var(--accent-2)", color: "var(--ink)" }}
+              >
+                wishlist
+              </span>
+            )}
           </button>
         );
       })}
@@ -90,17 +98,17 @@ function PickerGrid({ pool, selectedIds, onToggle }) {
 }
 
 export default function OutfitBuilder({ items, onClose }) {
-  const ownedItems = useMemo(() => items.filter((i) => i.status === "own"), [items]);
+  const usableItems = useMemo(() => items.filter((i) => i.status === "own" || i.status === "want"), [items]);
 
   const poolBySlot = useMemo(() => {
     const pools = {};
     for (const slot of OUTFIT_SLOTS) {
-      pools[slot.key] = ownedItems.filter((i) => slot.categories.includes(i.category));
+      pools[slot.key] = usableItems.filter((i) => slot.categories.includes(i.category));
     }
     const covered = new Set(OUTFIT_SLOTS.flatMap((s) => s.categories));
-    pools.other = ownedItems.filter((i) => !covered.has(i.category));
+    pools.other = usableItems.filter((i) => !covered.has(i.category));
     return pools;
-  }, [ownedItems]);
+  }, [usableItems]);
 
   const [selections, setSelections] = useState({ top: "", bottom: "", shoes: "", bag: "", jewelry: [], other: [] });
   const [positions, setPositions] = useState({});
@@ -117,7 +125,7 @@ export default function OutfitBuilder({ items, onClose }) {
   const resizeRef = useRef(null); // resize drag: { key, startX, startY, startW, startH }
 
   function findItem(id) {
-    return ownedItems.find((i) => i.id === id) || null;
+    return usableItems.find((i) => i.id === id) || null;
   }
 
   function currentPos(key) {
