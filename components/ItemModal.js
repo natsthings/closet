@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
-import { CATEGORIES, STATUSES, LOCATIONS, FORMALITY } from "@/lib/constants";
+import { STATUSES } from "@/lib/constants";
 
 const empty = {
   name: "",
@@ -11,6 +11,7 @@ const empty = {
   location: "home",
   color: "",
   formality: "casual",
+  size: "",
   tags: "",
   style: "",
   price: "",
@@ -19,7 +20,7 @@ const empty = {
   image_url: "",
 };
 
-export default function ItemModal({ userId, initial, onClose, onSaved }) {
+export default function ItemModal({ userId, initial, onClose, onSaved, categories, locations, formalityOptions }) {
   const supabase = createClient();
   const [form, setForm] = useState(
     initial
@@ -76,6 +77,7 @@ export default function ItemModal({ userId, initial, onClose, onSaved }) {
         tags: form.tags ? form.tags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean) : [],
         style: form.style ? form.style.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean) : [],
         price: form.price ? parseFloat(form.price) : null,
+        size: form.size || null,
         source_url: form.source_url || null,
         notes: form.notes || null,
         image_url,
@@ -136,7 +138,7 @@ export default function ItemModal({ userId, initial, onClose, onSaved }) {
             <label className="text-sm font-medium">
               Category
               <select value={form.category} onChange={(e) => update("category", e.target.value)} className="w-full mt-1">
-                {CATEGORIES.map((c) => (
+                {categories.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
@@ -152,7 +154,7 @@ export default function ItemModal({ userId, initial, onClose, onSaved }) {
             <label className="text-sm font-medium">
               Location
               <select value={form.location} onChange={(e) => update("location", e.target.value)} className="w-full mt-1">
-                {LOCATIONS.map((c) => (
+                {locations.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
@@ -160,7 +162,7 @@ export default function ItemModal({ userId, initial, onClose, onSaved }) {
             <label className="text-sm font-medium">
               Formality
               <select value={form.formality} onChange={(e) => update("formality", e.target.value)} className="w-full mt-1">
-                {FORMALITY.map((c) => (
+                {formalityOptions.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
@@ -170,13 +172,17 @@ export default function ItemModal({ userId, initial, onClose, onSaved }) {
               <input value={form.color} onChange={(e) => update("color", e.target.value)} className="w-full mt-1" placeholder="sage green" />
             </label>
             <label className="text-sm font-medium">
+              Size
+              <input value={form.size} onChange={(e) => update("size", e.target.value)} className="w-full mt-1" placeholder="M, 8, 32x30..." />
+            </label>
+            <label className="text-sm font-medium col-span-2">
               Price ($)
               <input type="number" step="0.01" value={form.price} onChange={(e) => update("price", e.target.value)} className="w-full mt-1" placeholder="24.99" />
             </label>
           </div>
 
           <label className="text-sm font-medium">
-            Tags (comma separated — city names, vibes, whatever you'd search)
+            Tags (comma separated — city names, vibes, whatever you&apos;d search)
             <input value={form.tags} onChange={(e) => update("tags", e.target.value)} className="w-full mt-1" placeholder="paris, thrifted, comfy" />
           </label>
           <label className="text-sm font-medium">
